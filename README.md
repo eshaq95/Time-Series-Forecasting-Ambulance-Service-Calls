@@ -1,7 +1,7 @@
 # Time Series Forecasting for Jakarta's Charitable Ambulance Service
 
 ## Project Overview
-This project focuses on developing a forecasting model for Jakarta's 118 ambulance service to optimize crew scheduling and resource allocation. Using nearly six years of historical call data (01/01/17 to 23/10/22), we forecast the upcoming eight weeks' demand (24/10/22 to 18/12/22), uncover seasonality patterns, and identify prevailing trends.
+This project focuses on developing a forecasting model for Jakarta's 118 ambulance services to optimize crew scheduling and resource allocation. Using nearly six years of historical call data (01/01/17 to 23/10/22), we forecast the upcoming eight weeks' demand (24/10/22 to 18/12/22), uncover seasonality patterns, and identify prevailing trends.
 
 ## Key Features
 - Comprehensive data exploration and visualization
@@ -45,11 +45,9 @@ The TBATS model demonstrated the best performance, capturing complex patterns an
 - Overall downward trend in call volumes from 2017 to 2022
 
 ## Repository Structure
-- `data/`: Contains the dataset
-- `scripts/`: R scripts for data preprocessing, analysis, and modeling
-- `results/`: Output files, including forecasts and performance metrics
-- `figures/`: Visualizations and plots
-- `poster/`: Final A2 poster presentation
+- `data/`: Contains the dataset, additional Excel file with data manipulation and analysis and also the 8-week prediction results of the best model
+- `scripts/`: R scripts for data preprocessing, analysis, and modelling
+- `poster/`: Final A2 poster presentation,  including forecasts and performance metrics
 
 ## Usage
 1. Clone the repository
