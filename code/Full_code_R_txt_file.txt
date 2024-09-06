@@ -1,0 +1,2231 @@
+# # Install necessary packages
+# install.packages("tidyverse")
+# install.packages("skimr")
+# install.packages("corrplot")
+# install.packages("gridExtra")
+
+# install.packages("forecast")
+# install.packages("tseries")
+# install.packages("ggplot2")
+# install.packages("xts")
+# install.packages("zoo")
+# install.packages("knitr")
+# install.packages("kableExtra")
+# install.packages("DescTools")
+# install.packages("plotly")
+#install.packages(c("recipes", "rsample", "dplyr", "ggplot2", "forcats", "stringr", "plotly", "lubridate", "padr", "purrr", "readr", "stringi", "tibble", "tidyr", "xts", "zoo", "rlang", "tidyselect", "slider", "anytime", "timeDate", "forecast", "tsfeatures", "hms", "assertthat", "generics"))
+#install.packages("rlang")
+#install.packages("timetk")
+#install.packages("ggplot")
+
+
+library(plotly)
+library(knitr)
+library(kableExtra)
+library(forecast)
+library(tseries)
+library(ggplot2)
+library(xts)
+library(zoo)
+
+
+# Read the data
+data <- read.csv("Coursework data")
+
+# View the first few rows of the 'incoming_calls' dataframe
+data
+
+
+# Convert the date column to a date object
+data$Date_Incoming_call <- as.Date(data$Date_Incoming_call, format = "%d/%m/%Y")
+
+# Convert the time column to a time object
+data$Incoming_Call_Time <- hms(data$Incoming_Call_Time)
+
+# Check for missing values
+missing_values <- colSums(is.na(data))
+cat('Missing Values Count Each Colum:\n')
+print(missing_values)
+
+# Remove rows with missing values (if any)
+data <- data[complete.cases(data), ]
+
+# Check for missing values after removing them to verify
+missing_values <- colSums(is.na(data))
+cat('Missing Values Count Each Colum:\n')
+print(missing_values)
+
+
+# Create new columns for the year, month, week, day, and hour
+data <- data %>%
+  mutate(
+    Year = year(Date_Incoming_call),
+    Month = month(Date_Incoming_call, label = TRUE),
+    Week = isoweek(Date_Incoming_call),
+    Day_of_Week = wday(Date_Incoming_call, label = TRUE),
+    Hour = hour(Incoming_Call_Time)
+  )
+
+head(data)
+
+# Print the dimensions of the data frame
+dimensions <- dim(data)
+cat("Number of rows:", dimensions[1], "\nNumber of columns:", dimensions[2])
+
+
+data_53rd_week <- data %>%
+  group_by(Year, Week) %>%
+  summarise(Total_Calls = n(), .groups = "drop") %>%
+  filter(Week == 53)
+
+data_53rd_week
+
+
+
+# Load the necessary packages
+library(skimr)
+
+# Generate a basic numerical summary
+summary(data)
+cat('-------------------------------------------------------------------------------\n')
+
+# Generate a more comprehensive numerical summary using skimr
+#skim(data)
+
+
+library(dplyr)
+
+# Aggregate the call data by year, week, and month
+data_agg_year_week <- data %>%
+  group_by(Year, Week) %>%
+  summarise(Total_Calls = n(), .groups = "drop")
+
+data_agg_year_month <- data %>%
+  group_by(Year, Month) %>%
+  summarise(Total_Calls = n(), .groups = "drop")
+
+# Compute the total number of calls per week and per month
+total_calls_week <- sum(data_agg_year_week$Total_Calls)
+total_calls_month <- sum(data_agg_year_month$Total_Calls)
+
+# Compute the number of unique weeks and months in the dataset
+unique_weeks <- nrow(data_agg_year_week)
+
+unique_months <- nrow(data_agg_year_month)
+
+# Calculate the average number of calls per week and per month
+avg_calls_week <- total_calls_week / unique_weeks
+avg_calls_month <- total_calls_month / unique_months
+
+# Print the summaries
+cat("Average calls per week:", avg_calls_week, "\n")
+cat("Average calls per month:", avg_calls_month, "\n")
+
+
+
+# Aggregate the call data by year, month, week, day, and hour
+data_agg_hour <- data %>%
+  group_by(Hour) %>%
+  summarise(Total_Calls = n())
+
+data_agg_day <- data %>%
+  group_by(Day_of_Week) %>%
+  summarise(Total_Calls = n())
+
+data_agg_week <- data %>%
+  group_by(Week) %>%
+  summarise(Total_Calls = n())
+
+data_agg_month <- data %>%
+  group_by(Month) %>%
+  summarise(Total_Calls = n())
+
+
+data_agg_year <- data %>%
+  group_by(Year) %>%
+  summarise(Total_Calls = n())
+
+# Show tables 
+data_agg_hour
+data_agg_day
+data_agg_week
+data_agg_month
+data_agg_year
+
+# Load the dplyr package
+library(dplyr)
+
+# Create data frames for each variable
+day_of_week_data <- data.frame(Day_of_Week = c(1, 2, 3, 4, 5, 6, 7), Total_Calls = c(364, 595, 562, 623, 589, 575, 426))
+hour_data <- data.frame(Hour = 0:23, Total_Calls = c(34, 30, 22, 29, 48, 304, 393, 179, 183, 213, 245, 215, 198, 197, 218, 205, 186, 149, 136, 161, 118, 96, 128, 47))
+week_data <- data.frame(Week = 1:54, Total_Calls = c(85, 84, 92, 98, 90, 64, 69, 84, 80, 87, 91, 59, 68, 66, 72, 82, 57, 65, 69, 72, 76, 84, 89, 88, 93, 72, 75, 97, 73, 84, 67, 85, 91, 78, 79, 88, 80, 68, 79, 56, 54, 48, 48, 55, 61, 57, 56, 52, 44, 43, 51, 37, 39, 4))
+month_data <- data.frame(Month = 1:12, Total_Calls = c(410, 291, 348, 291, 325, 359, 362, 355, 340, 233, 249, 171))
+
+# Calculate summary statistics for each variable
+day_of_week_summary <- summary(day_of_week_data$Total_Calls)
+hour_summary <- summary(hour_data$Total_Calls)
+week_summary <- summary(week_data$Total_Calls)
+month_summary <- summary(month_data$Total_Calls)
+
+# Print the summary statistics
+cat("Day of Week Summary:\n")
+print(day_of_week_summary)
+cat("\nHour Summary:\n")
+print(hour_summary)
+cat("\nWeek Summary:\n")
+print(week_summary)
+cat("\nMonth Summary:\n")
+print(month_summary)
+
+
+# Load necessary packages
+library(ggplot2)
+library(gridExtra)
+library(ggthemes)
+
+# Create histogram plots for each aggregated dataset
+plot_hour <- ggplot(data_agg_hour, aes(x = Hour, y = Total_Calls)) +
+  geom_col(fill = tableau_color_pal()(1)[1]) +
+  labs(title = "Hourly Call Volume", x = "Hour", y = "Total Calls") +
+  theme_minimal()
+
+plot_day <- ggplot(data_agg_day, aes(x = Day_of_Week, y = Total_Calls)) +
+  geom_col(fill = tableau_color_pal()(2)[2]) +
+  labs(title = "Daily Call Volume", x = "Day of Week", y = "Total Calls") +
+  theme_minimal()
+
+plot_week <- ggplot(data_agg_week, aes(x = Week, y = Total_Calls)) +
+  geom_col(fill = tableau_color_pal()(3)[3]) +
+  labs(title = "Weekly Call Volume", x = "Week", y = "Total Calls") +
+  theme_minimal()
+
+plot_month <- ggplot(data_agg_month, aes(x = Month, y = Total_Calls)) +
+  geom_col(fill = tableau_color_pal()(4)[4]) +
+  labs(title = "Monthly Call Volume", x = "Month", y = "Total Calls") +
+  theme_minimal()
+
+plot_year <- ggplot(data_agg_year, aes(x = Year, y = Total_Calls)) +
+  geom_col(fill = tableau_color_pal()(5)[5]) +
+  labs(title = "Yearly Call Volume", x = "Year", y = "Total Calls") +
+  theme_minimal()
+
+# Arrange the plots in a grid
+grid.arrange(plot_hour, plot_day, plot_week, plot_month, plot_year)
+
+
+# Load required libraries
+library(dplyr)
+library(plotly)
+
+# Create histogram plots using Plotly
+hour_plot <- plot_ly(data = data_agg_hour, x = ~Hour, y = ~Total_Calls, type = 'bar', name = 'Hour') %>%
+  layout(
+         xaxis = list(title = list(text = "Hour", font = list(size = 22)), tickfont = list(size = 18)),
+         yaxis = list(title = list(text = "Total_Calls", font = list(size = 22)), tickfont = list(size = 18)),
+         font = list(size = 20))
+
+
+hour_plot
+
+day_plot <- plot_ly(data = data_agg_day, x = ~Day_of_Week, y = ~Total_Calls, type = 'bar', name = 'Day') %>%
+  layout(title = 'Calls by Day of Week')
+
+week_plot <- plot_ly(data = data_agg_week, x = ~Week, y = ~Total_Calls, type = 'bar', name = 'Week') %>%
+  layout(title = 'Calls by Week')
+
+month_plot <- plot_ly(data = data_agg_month, x = ~Month, y = ~Total_Calls, type = 'bar', name = 'Month') %>%
+  layout(title = 'Calls by Month')
+
+year_plot <- plot_ly(data = data_agg_year, x = ~Year, y = ~Total_Calls, type = 'bar', name = 'Year') %>%
+  layout(title = '')
+
+# Display plots in a grid
+subplot(hour_plot, day_plot, month_plot, year_plot, nrows = 2, shareX = FALSE, shareY = FALSE)
+
+
+# # Load required libraries
+# library(dplyr)
+# library(plotly)
+
+# # Create histogram plots using Plotly
+
+# # Hourly histogram
+# hour_plot <- plot_ly(data = data_agg_hour, x = ~Hour, y = ~Total_Calls, type = 'bar', name = 'Hour') %>%
+#   layout(title = 'Calls by Hour')
+# hour_plot
+
+# # Daily histogram
+# day_plot <- plot_ly(data = data_agg_day, x = ~Day_of_Week, y = ~Total_Calls, type = 'bar', name = 'Day') %>%
+#   layout(title = 'Calls by Day of Week')
+# day_plot
+
+# # Weekly histogram
+# week_plot <- plot_ly(data = data_agg_week, x = ~Week, y = ~Total_Calls, type = 'bar', name = 'Week') %>%
+#   layout(title = 'Calls by Week')
+# week_plot
+
+# # Monthly histogram
+# month_plot <- plot_ly(data = data_agg_month, x = ~Month, y = ~Total_Calls, type = 'bar', name = 'Month') %>%
+#   layout(title = 'Calls by Month')
+# month_plot
+
+# # Yearly histogram
+# year_plot <- plot_ly(data = data_agg_year, x = ~Year, y = ~Total_Calls, type = 'bar', name = 'Year') %>%
+#   layout(title = 'Calls by Year')
+# year_plot
+
+
+# Box plot for hourly aggregated data
+plot_ly(data_agg_hour, y = ~Total_Calls, type = "box", name = "Hourly Call Volume") %>%
+  layout(title = "Hourly Call Volume", xaxis = list(title = "Hour"), yaxis = list(title = "Total Calls"))
+
+# Box plot for daily aggregated data
+plot_ly(data_agg_day, y = ~Total_Calls, type = "box", name = "Daily Call Volume") %>%
+  layout(title = "Daily Call Volume", xaxis = list(title = "Day of the Week"), yaxis = list(title = "Total Calls"))
+
+# Box plot for weekly aggregated data
+plot_ly(data_agg_week, y = ~Total_Calls, type = "box", name = "Weekly Call Volume") %>%
+  layout(title = "Weekly Call Volume", xaxis = list(title = "Week"), yaxis = list(title = "Total Calls"))
+
+# Box plot for monthly aggregated data
+plot_ly(data_agg_month, y = ~Total_Calls, type = "box", name = "Monthly Call Volume") %>%
+  layout(title = "Monthly Call Volume", xaxis = list(title = "Month"), yaxis = list(title = "Total Calls"))
+
+# Box plot for yearly aggregated data
+plot_ly(data_agg_year, y = ~Total_Calls, type = "box", name = "Yearly Call Volume") %>%
+  layout(title = "Yearly Call Volume", xaxis = list(title = "Year"), yaxis = list(title = "Total Calls"))
+
+
+data$YearMonth <- format(data$Date_Incoming_call, "%b %Y")
+
+
+year_month_order <- unique(data$YearMonth)
+year_month_order_factor <- factor(year_month_order, levels = year_month_order, ordered = TRUE)
+
+data_agg_year_month <- data %>%
+  group_by(YearMonth) %>%
+  summarise(Total_Calls = n()) %>%
+  mutate(YearMonth = factor(YearMonth, levels = year_month_order, ordered = TRUE)) %>%
+  arrange(YearMonth)
+
+
+plot_year_month_plotly <- plot_ly(data_agg_year_month, x = ~YearMonth, y = ~Total_Calls, type = 'scatter', mode = 'lines') %>%
+  layout(title = "Monthly Call Volume by Year", xaxis = list(title = "Year-Month"), yaxis = list(title = "Total Calls"))
+
+plot_year_month_plotly
+
+
+# Add an index column to the data_agg_year_month
+data_agg_year_month$Index <- seq_along(data_agg_year_month$YearMonth)
+
+# Calculate the linear regression model
+model <- lm(Total_Calls ~ Index, data = data_agg_year_month)
+
+# Add a new column with the predicted values
+data_agg_year_month$Trend <- predict(model)
+
+# Create the plot with the original data and the decreasing trend line
+plot_year_month_trend <- plot_ly(data_agg_year_month, x = ~YearMonth) %>%
+  add_lines(y = ~Total_Calls, name = "Call Volume") %>%
+  add_lines(y = ~Trend, name = "Trend Line") %>%
+  layout(title = "Monthly Call Volume by Year with Trend Line",
+         xaxis = list(title = "Year-Month"),
+         yaxis = list(title = "Total Calls"))
+
+plot_year_month_trend
+
+
+#print(data_agg_year_month, n = Inf)
+
+# Load necessary libraries
+library(plotly)
+library(dplyr)
+library(lubridate)
+library(viridisLite)
+
+# Compute the call volume for each month and year
+data_agg_year_month_seasonality <- data %>%
+  mutate(Year = year(Date_Incoming_call),
+         Month = month(Date_Incoming_call, label = TRUE)) %>%
+  group_by(Year, Month) %>%
+  summarise(Total_Calls = n())
+
+# Create a color palette
+color_palette <- viridis(length(unique(data_agg_year_month_seasonality$Year)))
+
+# Create a line plot of monthly seasonality using Plotly
+plot_monthly_seasonality_plotly <- plot_ly(data_agg_year_month_seasonality, 
+                                           x = ~Month, 
+                                           y = ~Total_Calls, 
+                                           color = ~as.factor(Year), 
+                                           colors = color_palette, 
+                                           type = 'scatter', 
+                                           mode = 'lines+markers', 
+                                           line = list(dash = "solid")) %>%
+  layout(title = "Monthly Seasonality", 
+         xaxis = list(title = "Month"), 
+         yaxis = list(title = "Call Volume"),
+         legend = list(title = list(text = "Year")))
+
+# Display the plot
+plot_monthly_seasonality_plotly
+
+
+#print(data_agg_year_month, n = Inf)
+
+# Compute the call volume for each month and year
+data_agg_year_month_boxplot <- data %>%
+  mutate(Year = year(Date_Incoming_call),
+         Month = month(Date_Incoming_call, label = TRUE)) %>%
+  group_by(Year, Month) %>%
+  summarise(Total_Calls = n())
+
+# Create a boxplot of monthly seasonality
+plot_monthly_seasonality_boxplot <- plot_ly(data_agg_year_month_boxplot, x = ~Month, y = ~Total_Calls, type = 'box') %>%
+  layout(title = "Monthly Seasonality Box Plots", xaxis = list(title = "Month"), yaxis = list(title = "Call Volume"))
+
+# Display the plot
+plot_monthly_seasonality_boxplot
+
+
+# Load necessary libraries
+library(plotly)
+library(dplyr)
+library(lubridate)
+library(viridisLite)
+
+# Compute the call volume for each week and year
+data_agg_year_week <- data %>%
+  mutate(Year = year(Date_Incoming_call),
+         Week = week(Date_Incoming_call)) %>%
+  group_by(Year, Week) %>%
+  summarise(Total_Calls = n(), .groups = "drop")
+
+# Create a color palette
+color_palette <- viridis(length(unique(data_agg_year_week$Year)))
+
+# Create a line plot of weekly seasonality using Plotly
+plot_weekly_seasonality_plotly <- plot_ly(data_agg_year_week, 
+                                          x = ~Week, 
+                                          y = ~Total_Calls, 
+                                          color = ~as.factor(Year), 
+                                          colors = color_palette, 
+                                          type = 'scatter', 
+                                          mode = 'lines+markers', 
+                                          line = list(dash = "solid")) %>%
+  layout(title = "Weekly Seasonality", 
+         xaxis = list(title = "Week"), 
+         yaxis = list(title = "Call Volume"),
+         legend = list(title = list(text = "Year")))
+
+# Display the plot
+plot_weekly_seasonality_plotly
+
+
+#print(data_agg_year_week, n = Inf)
+
+# Format the date column to show week number and year
+data$YearWeek <- format(data$Date_Incoming_call, "%Y-%U")
+
+# Get the unique week numbers in order
+year_week_order <- unique(data$YearWeek)
+year_week_order_factor <- factor(year_week_order, levels = year_week_order, ordered = TRUE)
+
+# Aggregate the data by week
+data_agg_year_week2 <- data %>%
+  group_by(YearWeek) %>%
+  summarise(Total_Calls = n()) %>%
+  mutate(YearWeek = factor(YearWeek, levels = year_week_order, ordered = TRUE)) %>%
+  arrange(YearWeek)
+
+# Plot the weekly call volume by year
+plot_year_week_plotly <- plot_ly(data_agg_year_week2, x = ~YearWeek, y = ~Total_Calls, type = 'scatter', mode = 'lines') %>%
+  layout(title = "Weekly Call Volume by Year", xaxis = list(title = "Year-Week"), yaxis = list(title = "Total Calls"))
+
+plot_year_week_plotly
+
+
+# Add an index column to the data_agg_year_week2
+data_agg_year_week2$Index <- seq_along(data_agg_year_week2$YearWeek)
+
+# Calculate the linear regression model
+model_week <- lm(Total_Calls ~ Index, data = data_agg_year_week2)
+
+# Add a new column with the predicted values
+data_agg_year_week2$Trend <- predict(model_week)
+
+# Create the plot with the original data and the decreasing trend line
+plot_year_week_trend <- plot_ly(data_agg_year_week2, x = ~Time) %>%
+  add_lines(y = ~Total_Calls, name = "Call Volume") %>%
+  add_lines(y = ~Trend, name = "Trend Line") %>%
+  layout(
+         xaxis = list(title = list(text = "Week Number", font = list(size = 22)), tickfont = list(size = 18)),
+         yaxis = list(title = list(text = "Total Calls", font = list(size = 22)), tickfont = list(size = 18)),
+         legend = list(title = list(font = list(size = 20)), font = list(size = 20)),
+         font = list(size = 20))
+
+plot_year_week_trend
+
+
+data_agg_year_week2
+
+# data_agg_year_week2
+
+#print(data_agg_year_week, n = Inf)
+
+# Load necessary libraries
+library(plotly)
+library(dplyr)
+library(lubridate)
+library(viridisLite)
+
+# Compute the call volume for each day of the week and year
+data_agg_year_day <- data %>%
+  mutate(Year = year(Date_Incoming_call),
+         Day_of_Week = wday(Date_Incoming_call, label = TRUE, week_start = 1)) %>%
+  group_by(Year, Day_of_Week) %>%
+  summarise(Total_Calls = n(), .groups = "drop")
+
+# Create a color palette
+color_palette <- viridis(length(unique(data_agg_year_day$Year)))
+
+# Create a line plot of daily seasonality using Plotly
+plot_daily_seasonality_plotly <- plot_ly(data_agg_year_day, 
+                                         x = ~Day_of_Week, 
+                                         y = ~Total_Calls, 
+                                         color = ~as.factor(Year), 
+                                         colors = color_palette, 
+                                         type = 'scatter', 
+                                         mode = 'lines+markers', 
+                                         line = list(dash = "solid")) %>%
+layout(
+         xaxis = list(title = list(text = "Day", font = list(size = 22)), tickfont = list(size = 18)),
+         yaxis = list(title = list(text = "Call Volume", font = list(size = 22)), tickfont = list(size = 18)),
+         legend = list(title = list(text = "Year", font = list(size = 20)), font = list(size = 20)),
+         font = list(size = 20))
+
+
+# Display the plot
+plot_daily_seasonality_plotly
+
+
+print(data_agg_year_day, n = Inf)
+
+data$YearDay <- format(data$Date_Incoming_call, "%Y-%j")
+
+year_day_order <- unique(data$YearDay)
+year_day_order_factor <- factor(year_day_order, levels = year_day_order, ordered = TRUE)
+
+data_agg_year_day_2 <- data %>%
+  group_by(YearDay) %>%
+  summarise(Total_Calls = n()) %>%
+  mutate(YearDay = factor(YearDay, levels = year_day_order, ordered = TRUE)) %>%
+  arrange(YearDay)
+
+plot_year_day_plotly <- plot_ly(data_agg_year_day_2, x = ~YearDay, y = ~Total_Calls, type = 'scatter', mode = 'lines') %>%
+  layout(title = "Daily Call Volume by Year", xaxis = list(title = "Year-Day"), yaxis = list(title = "Total Calls"))
+
+plot_year_day_plotly
+
+
+#print(data_agg_year_day, n = Inf)
+
+# Load necessary libraries
+library(plotly)
+library(dplyr)
+library(lubridate)
+library(viridisLite)
+
+# Compute the call volume for each hour and year
+data_agg_year_hour <- data %>%
+  mutate(Year = year(Date_Incoming_call),
+         Hour = hour(Incoming_Call_Time)) %>%
+  group_by(Year, Hour) %>%
+  summarise(Total_Calls = n(), .groups = "drop")
+
+# Create a color palette
+color_palette <- viridis(length(unique(data_agg_year_hour$Year)))
+
+# Create a line plot of hourly seasonality using Plotly
+plot_hourly_seasonality_plotly <- plot_ly(data_agg_year_hour, 
+                                          x = ~Hour, 
+                                          y = ~Total_Calls, 
+                                          color = ~as.factor(Year), 
+                                          colors = color_palette, 
+                                          type = 'scatter', 
+                                          mode = 'lines+markers', 
+                                          line = list(dash = "solid")) %>%
+  layout(
+         xaxis = list(title = list(text = "Hour", font = list(size = 20)), tickfont = list(size = 20)),
+         yaxis = list(title = list(text = "Call Volume", font = list(size = 20)), tickfont = list(size = 20)),
+         legend = list(title = list(text = "Year", font = list(size = 20)), font = list(size = 20)),
+         font = list(size = 16))
+
+# Display the plot
+plot_hourly_seasonality_plotly
+
+
+
+#print(data_agg_year_hour, n = Inf)
+
+# Load the lubridate package
+library(lubridate)
+
+# Extract the hour from the Incoming_Call_Time column
+data$Hour <- hour(data$Incoming_Call_Time)
+
+# Create a new column with the year and hour
+data$YearHour <- paste(data$Year, data$Hour, sep="-")
+
+
+# Get the unique year-hour numbers in order
+year_hour_order <- unique(data$YearHour)
+year_hour_order_factor <- factor(year_hour_order, levels = year_hour_order, ordered = TRUE)
+
+# Aggregate the data by year-hour
+data_agg_year_hour2 <- data %>%
+  group_by(YearHour) %>%
+  summarise(Total_Calls = n()) %>%
+  mutate(YearHour = factor(YearHour, levels = year_hour_order, ordered = TRUE)) %>%
+  arrange(YearHour)
+
+# Plot the hourly call volume by year
+plot_year_hour_plotly <- plot_ly(data_agg_year_hour2, x = ~YearHour, y = ~Total_Calls, type = 'scatter', mode = 'lines') %>%
+  layout(title = "Hourly Call Volume by Year", xaxis = list(title = "Year-Hour"), yaxis = list(title = "Total Calls"))
+
+plot_year_hour_plotly
+
+
+#print(data_agg_year_hour, n = Inf)
+
+# Install and load required libraries
+library(plotly)
+
+# Aggregate call volume by year-month
+data_agg_year_month <- data %>%
+  group_by(YearMonth) %>%
+  summarise(Total_Calls = n()) %>%
+  mutate(YearMonth = factor(YearMonth, levels = year_month_order, ordered = TRUE)) %>%
+  arrange(YearMonth)
+
+# Create lagged call volume variable
+data_agg_year_month$lagged_calls <- c(NA, head(data_agg_year_month$Total_Calls, -1))
+
+# Convert YearMonth to an ordered factor
+data_agg_year_month$YearMonth <- factor(data_agg_year_month$YearMonth, levels = year_month_order, ordered = TRUE)
+
+# Remove the row with the missing value in the lagged_calls variable
+data_agg_year_month <- data_agg_year_month[!is.na(data_agg_year_month$lagged_calls), ]
+
+# Create the lag plot using plotly
+plot_year_month_lag_plotly <- plot_ly(data_agg_year_month, x = ~lagged_calls, y = ~Total_Calls, type = 'scatter', mode = 'markers') %>%
+  layout(title = paste("Lag Plot: Monthly Call Volume vs Lagged Monthly Call Volume (Lag", 1,")"),
+         xaxis = list(title = "Lagged Monthly Call Volume"),
+         yaxis = list(title = "Monthly Call Volume"))
+
+# Display the lag plot
+plot_year_month_lag_plotly
+
+
+# library(plotly)
+# library(ggplot2)
+
+# # Convert the data_agg_year_month data frame to a time series object
+# call_volume_ts <- ts(data_agg_year_month$Total_Calls)
+
+# # Calculate the autocorrelation values
+# acf_values <- acf(call_volume_ts, plot = FALSE)
+
+# # Calculate the partial autocorrelation values using the forecast package
+# pacf_values <- pacf(call_volume_ts, plot = FALSE)
+
+# # Create a data frame with lag and partial autocorrelation values
+# pacf_data <- data.frame(Lag = pacf_values$lag[-1], PACF = pacf_values$acf[-1])
+
+
+# # Create data frames with lag and autocorrelation/partial autocorrelation values
+# acf_data <- data.frame(Lag = acf_values$lag[-1], ACF = acf_values$acf[-1])
+
+# # Create the autocorrelation plot using Plotly
+# acf_plot <- plot_ly(acf_data, x = ~Lag, y = ~ACF, type = 'scatter', mode = 'markers') %>%
+#   layout(title = "Autocorrelation Function (ACF) Plot",
+#          xaxis = list(title = "Lag"),
+#          yaxis = list(title = "Autocorrelation"))
+
+# # Create the partial autocorrelation plot using Plotly
+# pacf_plot <- plot_ly(pacf_data, x = ~Lag, y = ~PACF, type = 'scatter', mode = 'markers') %>%
+#   layout(title = "Partial Autocorrelation Function (PACF) Plot",
+#          xaxis = list(title = "Lag"),
+#          yaxis = list(title = "Partial Autocorrelation"))
+
+# # Display the plots
+# acf_plot
+# pacf_plot
+
+
+# print(acf_data)
+# print(pacf_data)
+
+options(repr.plot.width = 15, repr.plot.height = 11)
+
+# Load required libraries
+library(ggplot2)
+
+# Convert the data_agg_year_month data frame to a time series object
+call_volume_ts <- ts(data_agg_year_month$Total_Calls)
+
+# Calculate the autocorrelation values
+acf_values <- acf(call_volume_ts, plot = FALSE)
+
+# Calculate the partial autocorrelation values using the forecast package
+pacf_values <- pacf(call_volume_ts, plot = FALSE)
+
+# Create a data frame with lag and partial autocorrelation values
+pacf_data <- data.frame(Lag = pacf_values$lag[-1], PACF = pacf_values$acf[-1])
+
+
+# Create data frames with lag and autocorrelation/partial autocorrelation values
+acf_data <- data.frame(Lag = acf_values$lag[-1], ACF = acf_values$acf[-1])
+
+
+
+# Create the ACF plot using ggplot2
+acf_plot <- ggplot(acf_data, aes(x = Lag, y = ACF)) +
+  geom_point() +
+  geom_segment(aes(x = Lag, xend = Lag, y = 0, yend = ACF), linetype = "solid") +
+  labs(title = "Autocorrelation Function (ACF) Plot", x = "Lag", y = "Autocorrelation") +
+    theme_minimal() + theme(plot.title = element_text(size = 20),
+        axis.title.x = element_text(size = 18),
+        axis.title.y = element_text(size = 18),
+        axis.text = element_text(size = 16))
+
+# Display the ACF plot
+print(acf_plot)
+
+
+# Create the PACF plot using ggplot2
+pacf_plot <- ggplot(pacf_data, aes(x = Lag, y = PACF)) +
+  geom_point() +
+  geom_segment(aes(x = Lag, xend = Lag, y = 0, yend = PACF), linetype = "solid") +
+  labs(title = "Partial Autocorrelation Function (PACF) Plot", x = "Lag", y = "Partial Autocorrelation") +
+  theme_minimal() + theme(plot.title = element_text(size = 20),
+        axis.title.x = element_text(size = 18),
+        axis.title.y = element_text(size = 18),
+        axis.text = element_text(size = 16))
+
+# Display the PACF plot
+print(pacf_plot)
+
+
+
+# print(acf_data)
+# print(pacf_data)
+
+options(repr.plot.width = 15, repr.plot.height = 11)
+
+# Load required libraries
+library(ggplot2)
+
+# Convert the data_agg_year_month data frame to a time series object
+call_volume_ts <- ts(data_agg_year_week2$Total_Calls)
+
+# Calculate the autocorrelation values
+acf_values <- acf(call_volume_ts, plot = FALSE,  lag.max = 52)
+
+# Calculate the partial autocorrelation values using the forecast package
+pacf_values <- pacf(call_volume_ts, plot = FALSE,  lag.max = 52)
+
+# Create a data frame with lag and partial autocorrelation values
+pacf_data <- data.frame(Lag = pacf_values$lag[-1], PACF = pacf_values$acf[-1])
+
+
+# Create data frames with lag and autocorrelation/partial autocorrelation values
+acf_data <- data.frame(Lag = acf_values$lag[-1], ACF = acf_values$acf[-1])
+
+
+
+# Create the ACF plot using ggplot2
+acf_plot <- ggplot(acf_data, aes(x = Lag, y = ACF)) +
+  geom_point() +
+  geom_segment(aes(x = Lag, xend = Lag, y = 0, yend = ACF), linetype = "solid") +
+  labs(title = "Autocorrelation Function (ACF) Plot", x = "Lag", y = "Autocorrelation") +
+    theme_minimal() + theme(plot.title = element_text(size = 20),
+        axis.title.x = element_text(size = 18),
+        axis.title.y = element_text(size = 18),
+        axis.text = element_text(size = 16))
+
+# Display the ACF plot
+print(acf_plot)
+
+
+# Create the PACF plot using ggplot2
+pacf_plot <- ggplot(pacf_data, aes(x = Lag, y = PACF)) +
+  geom_point() +
+  geom_segment(aes(x = Lag, xend = Lag, y = 0, yend = PACF), linetype = "solid") +
+  labs(title = "Partial Autocorrelation Function (PACF) Plot", x = "Lag", y = "Partial Autocorrelation") +
+  theme_minimal() + theme(plot.title = element_text(size = 20),
+        axis.title.x = element_text(size = 18),
+        axis.title.y = element_text(size = 18),
+        axis.text = element_text(size = 16))
+
+# Display the PACF plot
+print(pacf_plot)
+
+
+
+# print(acf_data)
+# print(pacf_data)
+
+options(repr.plot.width = 15, repr.plot.height = 11)
+
+# Load required libraries
+library(ggplot2)
+
+# Convert the data_agg_year_month data frame to a time series object
+call_volume_ts <- ts(data_agg_year_day_2$Total_Calls)
+
+# Calculate the autocorrelation values
+acf_values <- acf(call_volume_ts, plot = FALSE,  lag.max = 7)
+
+# Calculate the partial autocorrelation values using the forecast package
+pacf_values <- pacf(call_volume_ts, plot = FALSE,  lag.max = 7)
+
+# Create a data frame with lag and partial autocorrelation values
+pacf_data <- data.frame(Lag = pacf_values$lag[-1], PACF = pacf_values$acf[-1])
+
+
+# Create data frames with lag and autocorrelation/partial autocorrelation values
+acf_data <- data.frame(Lag = acf_values$lag[-1], ACF = acf_values$acf[-1])
+
+
+
+# Create the ACF plot using ggplot2
+acf_plot <- ggplot(acf_data, aes(x = Lag, y = ACF)) +
+  geom_point() +
+  geom_segment(aes(x = Lag, xend = Lag, y = 0, yend = ACF), linetype = "solid") +
+  labs(title = "Autocorrelation Function (ACF) Plot", x = "Lag", y = "Autocorrelation") +
+    theme_minimal() + theme(plot.title = element_text(size = 20),
+        axis.title.x = element_text(size = 18),
+        axis.title.y = element_text(size = 18),
+        axis.text = element_text(size = 16))
+
+# Display the ACF plot
+print(acf_plot)
+
+
+# Create the PACF plot using ggplot2
+pacf_plot <- ggplot(pacf_data, aes(x = Lag, y = PACF)) +
+  geom_point() +
+  geom_segment(aes(x = Lag, xend = Lag, y = 0, yend = PACF), linetype = "solid") +
+  labs(title = "Partial Autocorrelation Function (PACF) Plot", x = "Lag", y = "Partial Autocorrelation") +
+  theme_minimal() + theme(plot.title = element_text(size = 20),
+        axis.title.x = element_text(size = 18),
+        axis.title.y = element_text(size = 18),
+        axis.text = element_text(size = 16))
+
+# Display the PACF plot
+print(pacf_plot)
+
+
+
+# print(acf_data)
+# print(pacf_data)
+
+options(repr.plot.width = 15, repr.plot.height = 11)
+
+# Load required libraries
+library(ggplot2)
+
+# Convert the data_agg_year_month data frame to a time series object
+call_volume_ts <- ts(data_agg_year_hour2$Total_Calls)
+
+# Calculate the autocorrelation values
+acf_values <- acf(call_volume_ts, plot = FALSE,  lag.max = 24)
+
+# Calculate the partial autocorrelation values using the forecast package
+pacf_values <- pacf(call_volume_ts, plot = FALSE,  lag.max = 24)
+
+# Create a data frame with lag and partial autocorrelation values
+pacf_data <- data.frame(Lag = pacf_values$lag[-1], PACF = pacf_values$acf[-1])
+
+
+# Create data frames with lag and autocorrelation/partial autocorrelation values
+acf_data <- data.frame(Lag = acf_values$lag[-1], ACF = acf_values$acf[-1])
+
+
+
+# Create the ACF plot using ggplot2
+acf_plot <- ggplot(acf_data, aes(x = Lag, y = ACF)) +
+  geom_point() +
+  geom_segment(aes(x = Lag, xend = Lag, y = 0, yend = ACF), linetype = "solid") +
+  labs(title = "Autocorrelation Function (ACF) Plot", x = "Lag", y = "Autocorrelation") +
+    theme_minimal() + theme(plot.title = element_text(size = 20),
+        axis.title.x = element_text(size = 18),
+        axis.title.y = element_text(size = 18),
+        axis.text = element_text(size = 16))
+
+# Display the ACF plot
+print(acf_plot)
+
+
+# Create the PACF plot using ggplot2
+pacf_plot <- ggplot(pacf_data, aes(x = Lag, y = PACF)) +
+  geom_point() +
+  geom_segment(aes(x = Lag, xend = Lag, y = 0, yend = PACF), linetype = "solid") +
+  labs(title = "Partial Autocorrelation Function (PACF) Plot", x = "Lag", y = "Partial Autocorrelation") +
+  theme_minimal() + theme(plot.title = element_text(size = 20),
+        axis.title.x = element_text(size = 18),
+        axis.title.y = element_text(size = 18),
+        axis.text = element_text(size = 16))
+
+# Display the PACF plot
+print(pacf_plot)
+
+
+
+# print(acf_data)
+# print(pacf_data)
+
+# Load necessary packages
+library(tidyverse)
+
+# Convert your data frame into a time series object
+# Note: the start date might need to be adjusted based on your data
+call_volume_ts <- ts(data_agg_year_week2$Total_Calls, frequency = 52, start = c(2017, 1))
+
+# Perform additive decomposition
+additive_decomposition <- decompose(call_volume_ts, type = "additive")
+
+# Plot the decomposition components
+plot(additive_decomposition)
+
+
+# Load necessary packages
+library(tidyverse)
+library(gridExtra)
+
+# Convert the time series components to a data frame
+decomposition_df <- data.frame(
+  Time = time(additive_decomposition$seasonal),
+  Seasonal = additive_decomposition$seasonal,
+  Trend = additive_decomposition$trend,
+  Error = additive_decomposition$random,
+  Observed = as.numeric(call_volume_ts)
+)
+
+# Filter out rows with missing values in the Trend component
+decomposition_df <- decomposition_df %>% filter(!is.na(Trend))
+
+# Create a ggplot for each component
+observed_plot <- ggplot(decomposition_df, aes(x = Time, y = Observed)) +
+  geom_line(color = "black") +
+  labs(title = "Observed Data", y = "Value")
+
+seasonal_plot <- ggplot(decomposition_df, aes(x = Time, y = Seasonal)) +
+  geom_line(color = "blue") +
+  labs(title = "Seasonal Component", y = "Value")
+
+trend_plot <- ggplot(decomposition_df, aes(x = Time, y = Trend)) +
+  geom_line(color = "red") +
+  labs(title = "Trend Component", y = "Value")
+
+error_plot <- ggplot(decomposition_df, aes(x = Time, y = Error)) +
+  geom_line(color = "green") +
+  labs(title = "Error Component", y = "Value")
+
+# Arrange the plots in a grid
+grid.arrange(observed_plot, seasonal_plot, trend_plot, error_plot, ncol = 1)
+
+
+
+# Load necessary packages
+library(tidyverse)
+library(plotly)
+
+# Convert the time series components to a data frame
+decomposition_df <- data.frame(
+  Time = time(additive_decomposition$seasonal),
+  Seasonal = additive_decomposition$seasonal,
+  Trend = additive_decomposition$trend,
+  Error = additive_decomposition$random,
+  Observed = as.numeric(call_volume_ts)
+)
+
+# Filter out rows with missing values in the Trend component
+decomposition_df <- decomposition_df %>% filter(!is.na(Trend))
+
+# Create a plotly plot for each component
+observed_plot <- plot_ly(decomposition_df, x = ~Time, y = ~Observed, type = 'scatter', mode = 'lines', name = 'Observed Data', line = list(color = 'black'))
+
+seasonal_plot <- plot_ly(decomposition_df, x = ~Time, y = ~Seasonal, type = 'scatter', mode = 'lines', name = 'Seasonal Component', line = list(color = 'blue'))
+
+trend_plot <- plot_ly(decomposition_df, x = ~Time, y = ~Trend, type = 'scatter', mode = 'lines', name = 'Trend Component', line = list(color = 'red'))
+
+error_plot <- plot_ly(decomposition_df, x = ~Time, y = ~Error, type = 'scatter', mode = 'lines', name = 'Error Component', line = list(color = 'green'))
+
+# Use subplot() function from plotly to combine the plots
+subplot(seasonal_plot, trend_plot, error_plot, nrows = 3, margin = 0.05)
+
+
+# Load the package
+library(DescTools)
+# Load the required package
+library(dplyr)
+
+
+# Convert the character strings to ordered factors
+start_date <- factor("Dec 2020", levels = year_month_order, ordered = TRUE)
+end_date <- factor("Oct 2022", levels = year_month_order, ordered = TRUE)
+
+# Filter the data between the start and end dates
+data_agg_year_month_subset <- data_agg_year_month %>%
+  filter(YearMonth >= start_date & YearMonth <= end_date)
+
+# Apply winsorizing to the subset of data
+data_agg_year_month_winsorized <- data_agg_year_month_subset %>%
+  mutate(Total_Calls_Winsorized = Winsorize(Total_Calls, probs = c(0.3, 0.7))) %>%
+  select(YearMonth, Total_Calls_Winsorized)
+
+# Combine the original dataset with the winsorized subset
+data_agg_year_month_combined <- data_agg_year_month %>%
+  left_join(data_agg_year_month_winsorized, by = "YearMonth", suffix = c("", "_Winsorized"))
+
+# Replace the original values with the winsorized values for the subset
+data_agg_year_month_combined$Total_Calls <- ifelse(
+  !is.na(data_agg_year_month_combined$Total_Calls_Winsorized),
+  data_agg_year_month_combined$Total_Calls_Winsorized,
+  data_agg_year_month_combined$Total_Calls
+)
+
+# Plot the original and winsorized data
+plot_year_month_plotly_original <- plot_ly(data_agg_year_month, x = ~YearMonth, y = ~Total_Calls, type = 'scatter', mode = 'lines', name = 'Original') %>%
+  layout(title = "Monthly Call Volume by Year", xaxis = list(title = "Year-Month"), yaxis = list(title = "Total Calls"))
+
+plot_year_month_plotly_winsorized <- plot_ly(data_agg_year_month_combined, x = ~YearMonth, y = ~Total_Calls, type = 'scatter', mode = 'lines', name = 'Winsorized') %>%
+  layout(title = "Monthly Call Volume by Year - Winsorized", xaxis = list(title = "Year-Month"), yaxis = list(title = "Total Calls"))
+
+subplot(plot_year_month_plotly_original, plot_year_month_plotly_winsorized, nrows = 2, margin = 0.05)
+
+
+# Load the package
+library(DescTools)
+# Load the required package
+library(dplyr)
+
+# Create a new data frame with YearMonths and the winsorized Total_Calls column
+data_agg_year_month_winsorized <- data_agg_year_month %>%
+  select(YearMonth, Total_Calls) %>%
+  mutate(Total_Calls = Winsorize(Total_Calls, probs = c(0.05, 0.95)))
+
+
+# Original data plot
+plot_year_month_original <- plot_ly(data_agg_year_month, x = ~YearMonth, y = ~Total_Calls, type = 'scatter', mode = 'lines') %>%
+  layout(title = "Original Monthly Call Volume", xaxis = list(title = "Year-Month"), yaxis = list(title = "Total Calls"))
+
+# Display the original data plot
+plot_year_month_original
+
+# Winsorized data plot
+plot_year_month_winsorized <- plot_ly(data_agg_year_month_winsorized, x = ~YearMonth, y = ~Total_Calls, type = 'scatter', mode = 'lines') %>%
+  layout(title = "Winsorized Monthly Call Volume", xaxis = list(title = "Year-Month"), yaxis = list(title = "Total Calls"))
+
+# Display the winsorized data plot
+plot_year_month_winsorized
+
+
+# Load the required package
+library(lubridate)
+
+# Compute the call volume for each month and year using the winsorized data
+data_agg_year_month_winsorized_boxplot <- data_agg_year_month_winsorized %>%
+  separate(YearMonth, into = c("Month", "Year"), sep = " ", remove = FALSE) %>%
+  mutate(Year = as.numeric(Year),
+         Month = factor(Month, levels = month.abb, ordered = TRUE)) %>%
+  group_by(Year, Month) %>%
+  summarise(Total_Calls = sum(Total_Calls))
+
+# Create a boxplot of monthly seasonality for the winsorized data
+plot_monthly_seasonality_winsorized_boxplot <- plot_ly(data_agg_year_month_winsorized_boxplot, x = ~Month, y = ~Total_Calls, type = 'box') %>%
+  layout(title = "Monthly Seasonality Box Plots (Winsorized Data)", xaxis = list(title = "Month"), yaxis = list(title = "Call Volume"))
+
+# Display the plot
+plot_monthly_seasonality_winsorized_boxplot
+
+
+# Load the required libraries
+library(forecast)
+library(dplyr)
+library(ggplot2)
+
+# Define the forecast horizon
+forecast_horizon <- 8
+
+# Custom function to calculate MAPE
+mape <- function(actual, forecast) {
+  return(mean(abs((actual - forecast) / actual), na.rm = TRUE))
+}
+
+# Custom function to calculate RMSE
+rmse <- function(actual, forecast) {
+  return(sqrt(mean((forecast - actual)^2, na.rm = TRUE)))
+}
+
+# Naive model function for tsCV
+naive_model_function <- function(train_data, h) {
+  model <- naive(train_data)
+  forecast(model, h = h)
+}
+
+# Perform time series cross-validation for the Naive model and calculate MAPE and RMSE
+cv_errors_naive <- tsCV(data_agg_year_week2$Total_Calls, naive_model_function, h = forecast_horizon)
+
+# Get the actual values corresponding to the forecast errors
+actual_values <- window(data_agg_year_week2$Total_Calls, start = (length(data_agg_year_week2$Total_Calls) - length(cv_errors_naive) + 1), end = length(data_agg_year_week2$Total_Calls))
+
+# Calculate MAPE and RMSE for the cross-validation data
+mape_naive <- mape(actual_values, cv_errors_naive)
+rmse_naive <- rmse(actual_values, cv_errors_naive)
+
+# Fit Naive model to the entire data and calculate MAPE and RMSE for the fitted values
+model_naive <- naive(data_agg_year_week2$Total_Calls)
+fitted_naive <- fitted(model_naive)
+
+mape_naive_fitted <- mape(data_agg_year_week2$Total_Calls, fitted_naive)
+rmse_naive_fitted <- rmse(data_agg_year_week2$Total_Calls, fitted_naive)
+
+# Display MAPE and RMSE result for the Naive model
+result_naive <- data.frame(Model = "Naive", MAPE_CV = mape_naive, RMSE_CV = rmse_naive, MAPE_Fitted = mape_naive_fitted, RMSE_Fitted = rmse_naive_fitted)
+print(result_naive)
+
+
+# Create a data frame with actual data and lagged values as the naive forecast
+actual_fitted_data <- data.frame(
+  Time = 1:length(data_agg_year_week2$Total_Calls),
+  Total_Calls = data_agg_year_week2$Total_Calls,
+  Fitted = c(NA, data_agg_year_week2$Total_Calls[-length(data_agg_year_week2$Total_Calls)])
+)
+
+# Create forecast data frame with last observed value repeated
+forecast_data <- data.frame(
+  Time = (length(data_agg_year_week2$Total_Calls) + 1):(length(data_agg_year_week2$Total_Calls) + forecast_horizon),
+  Total_Calls = NA,
+  Fitted = rep(data_agg_year_week2$Total_Calls[length(data_agg_year_week2$Total_Calls)], forecast_horizon)
+)
+
+# Combine actual, fitted, and forecast data
+plot_data <- rbind(actual_fitted_data, forecast_data)
+
+# Calculate residuals for the fitted data
+actual_fitted_data$Residuals <- actual_fitted_data$Total_Calls - actual_fitted_data$Fitted
+
+# Calculate standard deviation of residuals
+residual_sd <- sd(actual_fitted_data$Residuals, na.rm = TRUE)
+
+# Create confidence intervals for the forecast
+forecast_data$Lower_CI <- forecast_data$Fitted - 1.96 * residual_sd
+forecast_data$Upper_CI <- forecast_data$Fitted + 1.96 * residual_sd
+
+# Add confidence intervals to the plot
+ggplot(data = plot_data, aes(x = Time)) +
+  geom_line(aes(y = Total_Calls, color = "Actual Data"), na.rm = TRUE) +
+  geom_line(aes(y = Fitted, color = "Fitted & Forecast", linetype = "Fitted & Forecast")) +
+  geom_point(data = forecast_data, aes(y = Fitted, color = "Forecast", shape = "Forecast"), size = 2) +
+  geom_ribbon(data = forecast_data, aes(ymin = Lower_CI, ymax = Upper_CI), alpha = 0.2) +  # Add this line
+  ggtitle("Naive Model: Actual Data, Fitted Values, and Forecasts") +
+  xlab("Time (Week Number)") +
+  ylab("Total Calls") +
+  scale_color_manual(values = c("Actual Data" = "blue", "Fitted & Forecast" = "red", "Forecast" = "green"),
+                     name = "Legend") +
+  scale_linetype_manual(values = c("Fitted & Forecast" = "dashed"),
+                        name = "Legend") +
+  scale_shape_manual(values = c("Forecast" = 20),
+                     name = "Legend") +
+  theme(plot.margin = margin(5, 20, 5, 20),
+        aspect.ratio = 0.2) # You can adjust the aspect ratio value to your preference
+
+
+
+# Load the required libraries
+library(forecast)
+library(dplyr)
+library(plotly)
+
+# Define the forecast horizon
+forecast_horizon <- 8
+
+# Create a data frame with actual data and lagged values as the naive forecast
+actual_fitted_data <- data.frame(
+  Time = 1:length(data_agg_year_week2$Total_Calls),
+  Total_Calls = data_agg_year_week2$Total_Calls,
+  Fitted = c(NA, data_agg_year_week2$Total_Calls[-length(data_agg_year_week2$Total_Calls)])
+)
+
+# Calculate residuals for the fitted data
+actual_fitted_data$Residuals <- actual_fitted_data$Total_Calls - actual_fitted_data$Fitted
+
+# Calculate standard deviation of residuals
+residual_sd <- sd(actual_fitted_data$Residuals, na.rm = TRUE)
+
+# Create forecast data frame with last observed value repeated
+forecast_data <- data.frame(
+  Time = (length(data_agg_year_week2$Total_Calls) + 1):(length(data_agg_year_week2$Total_Calls) + forecast_horizon),
+  Total_Calls = NA,
+  Fitted = rep(data_agg_year_week2$Total_Calls[length(data_agg_year_week2$Total_Calls)], forecast_horizon)
+)
+
+# Create confidence intervals for the forecast
+forecast_data$Lower_CI <- forecast_data$Fitted - 1.96 * residual_sd
+forecast_data$Upper_CI <- forecast_data$Fitted + 1.96 * residual_sd
+
+# Add missing columns
+actual_fitted_data$Lower_CI <- NA
+actual_fitted_data$Upper_CI <- NA
+forecast_data$Residuals <- NA
+
+# Combine actual, fitted, and forecast data
+plot_data <- rbind(actual_fitted_data, forecast_data)
+
+
+# Create a plotly plot
+p <- plot_ly() %>%
+  add_trace(data = plot_data, x = ~Time, y = ~Total_Calls, type = 'scatter', mode = 'lines', name = 'Actual Data', line = list(color = 'blue')) %>%
+  add_trace(data = plot_data, x = ~Time, y = ~Fitted, type = 'scatter', mode = 'lines', name = 'Fitted Data', line = list(color = 'red', dash = 'dash')) %>%
+  add_trace(data = forecast_data, x = ~Time, y = ~Fitted, type = 'scatter', mode = 'markers', name = 'Forecast', marker = list(color = 'yellow')) %>%
+  add_trace(data = forecast_data, x = ~Time, y = ~Lower_CI, type = 'scatter', mode = 'lines', name = 'Lower CI', line = list(width = 0)) %>%
+  add_trace(data = forecast_data, x = ~Time, y = ~Upper_CI, type = 'scatter', mode = 'lines', name = 'Upper CI', fill = 'tonexty', fillcolor = 'rgba(0, 0, 0, 0.2)', line = list(width = 0)) %>%
+  layout(
+         xaxis = list(title = "Time (Week Number)", titlefont = list(size = 20), tickfont = list(size = 18)),
+         yaxis = list(title = "Total Calls", titlefont = list(size = 20), tickfont = list(size = 18)),
+         legend = list(font = list(size = 20)))
+
+
+# Print the plot
+p
+
+
+forecast_data
+
+# Calculate the residuals
+residuals_naive <- residuals(model_naive)
+
+# Generate autocorrelation plot of the residuals
+Acf(residuals_naive, main="Autocorrelation of Residuals")
+
+
+# Calculate autocorrelation
+acf_values <- Acf(residuals_naive, plot = FALSE)
+
+# Print acf values
+print(acf_values)
+
+# Perform the Ljung-Box test
+ljung_box_test_result <- Box.test(residuals_naive, type = "Ljung-Box")
+
+# Print the test results
+print(ljung_box_test_result)
+
+
+# Load the required libraries
+library(forecast)
+library(dplyr)
+library(ggplot2)
+
+# Define the forecast horizon
+forecast_horizon <- 8
+
+# Custom function to calculate MAPE
+mape <- function(actual, forecast) {
+  return(mean(abs((actual - forecast) / actual), na.rm = TRUE))
+}
+
+# Custom function to calculate RMSE
+rmse <- function(actual, forecast) {
+  return(sqrt(mean((forecast - actual)^2, na.rm = TRUE)))
+}
+
+# SES model function for tsCV
+ses_model_function <- function(train_data, h) {
+  model <- ses(train_data)
+  forecast(model, h = h)
+}
+
+# Perform time series cross-validation for the SES model and calculate MAPE and RMSE
+cv_errors_ses <- tsCV(data_agg_year_week2$Total_Calls, ses_model_function, h = forecast_horizon)
+
+# Get the actual values corresponding to the forecast errors
+actual_values <- window(data_agg_year_week2$Total_Calls, start = (length(data_agg_year_week2$Total_Calls) - length(cv_errors_ses) + 1), end = length(data_agg_year_week2$Total_Calls))
+
+# Calculate MAPE and RMSE for the cross-validation data
+mape_ses <- mape(actual_values, cv_errors_ses)
+rmse_ses <- rmse(actual_values, cv_errors_ses)
+
+# Fit SES model to the entire data and calculate MAPE and RMSE for the fitted values
+model_ses <- ses(data_agg_year_week2$Total_Calls)
+fitted_ses <- fitted(model_ses)
+mape_ses_fitted <- mape(data_agg_year_week2$Total_Calls, fitted_ses)
+rmse_ses_fitted <- rmse(data_agg_year_week2$Total_Calls, fitted_ses)
+
+# Display MAPE and RMSE result for the SES model
+result_ses <- data.frame(Model = "SES", MAPE_CV = mape_ses, RMSE_CV = rmse_ses, MAPE_Fitted = mape_ses_fitted, RMSE_Fitted = rmse_ses_fitted)
+print(result_ses)
+
+
+
+# Fit the SES model on the training data
+ses_model <- ses(data_agg_year_week2$Total_Calls, h = forecast_horizon)
+
+# Create a data frame with actual data and SES fitted values
+actual_fitted_data <- data.frame(
+  Time = 1:length(data_agg_year_week2$Total_Calls),
+  Total_Calls = data_agg_year_week2$Total_Calls,
+  Fitted = as.numeric(fitted(ses_model))
+)
+
+# Get forecast results
+ses_forecast <- forecast(ses_model, h = forecast_horizon)
+
+# Create forecast data frame with SES forecasts and confidence intervals
+forecast_data <- data.frame(
+  Time = (length(data_agg_year_week2$Total_Calls) + 1):(length(data_agg_year_week2$Total_Calls) + forecast_horizon),
+  Total_Calls = NA,
+  Fitted = as.numeric(ses_forecast$mean),
+  Lower_CI = as.numeric(ses_forecast$lower[,2]),  # 95% confidence interval lower limit
+  Upper_CI = as.numeric(ses_forecast$upper[,2])   # 95% confidence interval upper limit
+)
+
+# Add Lower_CI and Upper_CI to actual_fitted_data
+actual_fitted_data$Lower_CI <- NA
+actual_fitted_data$Upper_CI <- NA
+
+# Now, the rbind() should work since both data frames have the same number of columns
+plot_data <- rbind(actual_fitted_data, forecast_data)
+
+# Proceed with the plot as before
+ggplot(data = plot_data, aes(x = Time)) +
+  geom_line(aes(y = Total_Calls, color = "Actual Data"), na.rm = TRUE) +
+  geom_line(aes(y = Fitted, color = "Fitted & Forecast", linetype = "Fitted & Forecast")) +
+  geom_point(data = forecast_data, aes(y = Fitted, color = "Forecast", shape = "Forecast"), size = 2) +
+  geom_ribbon(data = forecast_data, aes(ymin = Lower_CI, ymax = Upper_CI), alpha = 0.2) +
+  ggtitle("SES Model: Actual Data, Fitted Values, and Forecasts") +
+  xlab("Time (Week Number)") +
+  ylab("Total Calls") +
+  scale_color_manual(values = c("Actual Data" = "blue", "Fitted & Forecast" = "red", "Forecast" = "green"),
+                     name = "Legend") +
+  scale_linetype_manual(values = c("Fitted & Forecast" = "dashed"),
+                        name = "Legend") +
+  scale_shape_manual(values = c("Forecast" = 20),
+                     name = "Legend") +
+  theme(plot.margin = margin(0, 0, 0, 0),
+        aspect.ratio = 0.2) # You can adjust the aspect ratio value to your preference
+
+
+# Load the required libraries
+library(forecast)
+library(dplyr)
+library(plotly)
+
+# Define the forecast horizon
+forecast_horizon <- 8
+
+# Fit the SES model on the training data
+ses_model <- ses(data_agg_year_week2$Total_Calls, h = forecast_horizon)
+
+# Create a data frame with actual data and SES fitted values
+actual_fitted_data <- data.frame(
+  Time = 1:length(data_agg_year_week2$Total_Calls),
+  Total_Calls = data_agg_year_week2$Total_Calls,
+  Fitted = as.numeric(fitted(ses_model)),
+  Lower_CI = NA,
+  Upper_CI = NA
+)
+
+# Get forecast results
+ses_forecast <- forecast(ses_model, h = forecast_horizon)
+
+# Create forecast data frame with SES forecasts and confidence intervals
+forecast_data <- data.frame(
+  Time = (length(data_agg_year_week2$Total_Calls) + 1):(length(data_agg_year_week2$Total_Calls) + forecast_horizon),
+  Total_Calls = NA,
+  Fitted = as.numeric(ses_forecast$mean),
+  Lower_CI = as.numeric(ses_forecast$lower[,2]),  # 95% confidence interval lower limit
+  Upper_CI = as.numeric(ses_forecast$upper[,2])   # 95% confidence interval upper limit
+)
+
+# Combine actual, fitted, and forecast data
+plot_data <- rbind(actual_fitted_data, forecast_data)
+
+# Create a plotly plot
+p <- plot_ly() %>%
+  add_trace(data = plot_data, x = ~Time, y = ~Total_Calls, type = 'scatter', mode = 'lines', name = 'Actual Data', line = list(color = 'blue')) %>%
+  add_trace(data = plot_data, x = ~Time, y = ~Fitted, type = 'scatter', mode = 'lines', name = 'Fitted Data', line = list(color = 'red', dash = 'dash')) %>%
+  add_trace(data = forecast_data, x = ~Time, y = ~Fitted, type = 'scatter', mode = 'markers', name = 'Forecast', marker = list(color = 'yellow')) %>%
+  add_trace(data = forecast_data, x = ~Time, y = ~Lower_CI, type = 'scatter', mode = 'lines', name = 'Lower CI', line = list(width = 0)) %>%
+  add_trace(data = forecast_data, x = ~Time, y = ~Upper_CI, type = 'scatter', mode = 'lines', name = 'Upper CI', fill = 'tonexty', fillcolor = 'rgba(0, 0, 0, 0.2)', line = list(width = 0)) %>%
+  layout(
+    xaxis = list(title = "Time (Week Number)", titlefont = list(size = 20), tickfont = list(size = 18)),
+    yaxis = list(title = "Total Calls", titlefont = list(size = 20), tickfont = list(size = 18)),
+    legend = list(font = list(size = 20))
+  )
+
+# Print the plot
+p
+
+
+
+forecast_data
+
+# Calculate the residuals
+residuals_ses <- residuals(model_ses)
+
+# Generate autocorrelation plot of the residuals
+Acf(residuals_ses, main="Autocorrelation of Residuals")
+
+# Calculate autocorrelation
+acf_values <- Acf(residuals_ses, plot = FALSE)
+
+# Print acf values
+print(acf_values)
+
+# Perform the Ljung-Box test
+ljung_box_test_result <- Box.test(residuals_ses, type = "Ljung-Box")
+
+# Print the test results
+print(ljung_box_test_result)
+
+
+# Load the required libraries
+library(forecast)
+library(dplyr)
+library(ggplot2)
+
+# Define the forecast horizon
+forecast_horizon <- 8
+
+# Custom function to calculate MAPE
+mape <- function(actual, forecast) {
+  return(mean(abs((actual - forecast) / actual), na.rm = TRUE))
+}
+
+# Custom function to calculate RMSE
+rmse <- function(actual, forecast) {
+  return(sqrt(mean((forecast - actual)^2, na.rm = TRUE)))
+}
+
+# Holt's linear model function for tsCV
+holt_model_function <- function(train_data, h) {
+  model <- holt(train_data)
+  forecast(model, h = h)
+}
+
+# Perform time series cross-validation for the Holt's linear model and calculate MAPE and RMSE
+cv_errors_holt <- tsCV(data_agg_year_week2$Total_Calls, holt_model_function, h = forecast_horizon)
+
+# Get the actual values corresponding to the forecast errors
+actual_values <- window(data_agg_year_week2$Total_Calls, start = (length(data_agg_year_week2$Total_Calls) - length(cv_errors_holt) + 1), end = length(data_agg_year_week2$Total_Calls))
+
+# Calculate MAPE and RMSE for the cross-validation data
+mape_holt <- mape(actual_values, cv_errors_holt)
+rmse_holt <- rmse(actual_values, cv_errors_holt)
+
+# Fit Holt's linear model to the entire data and calculate MAPE and RMSE for the fitted values
+model_holt <- holt(data_agg_year_week2$Total_Calls)
+fitted_holt <- fitted(model_holt)
+mape_holt_fitted <- mape(data_agg_year_week2$Total_Calls, fitted_holt)
+rmse_holt_fitted <- rmse(data_agg_year_week2$Total_Calls, fitted_holt)
+
+# Display MAPE and RMSE result for the Holt's linear model
+result_holt <- data.frame(Model = "Holt", MAPE_CV = mape_holt, RMSE_CV = rmse_holt, MAPE_Fitted = mape_holt_fitted, RMSE_Fitted = rmse_holt_fitted)
+print(result_holt)
+
+
+# summary(model_holt)
+
+# Load the required libraries
+library(forecast)
+library(dplyr)
+library(ggplot2)
+
+# Define the forecast horizon
+forecast_horizon <- 8
+
+# Fit the Holt's linear model on the training data
+holt_model <- holt(data_agg_year_week2$Total_Calls, h = forecast_horizon)
+
+# Create a data frame with actual data and Holt's linear fitted values
+actual_fitted_data <- data.frame(
+  Time = 1:length(data_agg_year_week2$Total_Calls),
+  Total_Calls = data_agg_year_week2$Total_Calls,
+  Fitted = as.numeric(fitted(holt_model))
+)
+
+# Get forecast results
+holt_forecast <- forecast(holt_model, h = forecast_horizon)
+
+# Create forecast data frame with Holt's linear forecasts and confidence intervals
+forecast_data <- data.frame(
+  Time = (length(data_agg_year_week2$Total_Calls) + 1):(length(data_agg_year_week2$Total_Calls) + forecast_horizon),
+  Total_Calls = NA,
+  Fitted = as.numeric(holt_forecast$mean),
+  Lower_CI = as.numeric(holt_forecast$lower[,2]),  # 95% confidence interval lower limit
+  Upper_CI = as.numeric(holt_forecast$upper[,2])   # 95% confidence interval upper limit
+)
+
+# Add Lower_CI and Upper_CI to actual_fitted_data
+actual_fitted_data$Lower_CI <- NA
+actual_fitted_data$Upper_CI <- NA
+
+# Now, the rbind() should work since both data frames have the same number of columns
+plot_data <- rbind(actual_fitted_data, forecast_data)
+
+# Proceed with the plot as before
+ggplot(data = plot_data, aes(x = Time)) +
+  geom_line(aes(y = Total_Calls, color = "Actual Data"), na.rm = TRUE) +
+  geom_line(aes(y = Fitted, color = "Fitted & Forecast", linetype = "Fitted & Forecast")) +
+  geom_point(data = forecast_data, aes(y = Fitted, color = "Forecast", shape = "Forecast"), size = 2) +
+  geom_ribbon(data = forecast_data, aes(ymin = Lower_CI, ymax = Upper_CI), alpha = 0.2) +
+  ggtitle("Holt's Linear Model: Actual Data, Fitted Values, and Forecasts") +
+  xlab("Time (Week Number)") +
+  ylab("Total Calls") +
+  scale_color_manual(values = c("Actual Data" = "blue", "Fitted & Forecast" = "red", "Forecast" = "green"),
+                     name = "Legend") +
+  scale_linetype_manual(values = c("Fitted & Forecast" = "dashed"),
+                        name = "Legend") +
+  scale_shape_manual(values = c("Forecast" = 20),
+                     name = "Legend") +
+  theme(plot.margin = margin(5, 20, 5, 20),
+        aspect.ratio = 0.5) # You can adjust the aspect ratio value to your preference
+
+
+# Load the required libraries
+library(forecast)
+library(dplyr)
+library(plotly)
+
+# Define the forecast horizon
+forecast_horizon <- 8
+
+# Fit the Holt's linear model on the training data
+holt_model <- holt(data_agg_year_week2$Total_Calls, h = forecast_horizon)
+
+# Create a data frame with actual data and Holt's linear fitted values
+actual_fitted_data <- data.frame(
+  Time = 1:length(data_agg_year_week2$Total_Calls),
+  Total_Calls = data_agg_year_week2$Total_Calls,
+  Fitted = as.numeric(fitted(holt_model)),
+  Lower_CI = NA,
+  Upper_CI = NA
+)
+
+# Get forecast results
+holt_forecast <- forecast(holt_model, h = forecast_horizon)
+
+# Create forecast data frame with Holt's linear forecasts and confidence intervals
+forecast_data <- data.frame(
+  Time = (length(data_agg_year_week2$Total_Calls) + 1):(length(data_agg_year_week2$Total_Calls) + forecast_horizon),
+  Total_Calls = NA,
+  Fitted = as.numeric(holt_forecast$mean),
+  Lower_CI = as.numeric(holt_forecast$lower[,2]),  # 95% confidence interval lower limit
+  Upper_CI = as.numeric(holt_forecast$upper[,2])   # 95% confidence interval upper limit
+)
+
+# Combine actual, fitted, and forecast data
+plot_data <- rbind(actual_fitted_data, forecast_data)
+
+# Create a plotly plot
+p <- plot_ly() %>%
+  add_trace(data = plot_data, x = ~Time, y = ~Total_Calls, type = 'scatter', mode = 'lines', name = 'Actual Data', line = list(color = 'blue')) %>%
+  add_trace(data = plot_data, x = ~Time, y = ~Fitted, type = 'scatter', mode = 'lines', name = 'Fitted Data', line = list(color = 'red', dash = 'dash')) %>%
+  add_trace(data = forecast_data, x = ~Time, y = ~Fitted, type = 'scatter', mode = 'markers', name = 'Forecast', marker = list(color = 'yellow')) %>%
+  add_trace(data = forecast_data, x = ~Time, y = ~Lower_CI, type = 'scatter', mode = 'lines', name = 'Lower CI', line = list(width = 0)) %>%
+  add_trace(data = forecast_data, x = ~Time, y = ~Upper_CI, type = 'scatter', mode = 'lines', name = 'Upper CI', fill = 'tonexty', fillcolor = 'rgba(0, 0, 0, 0.2)', line = list(width = 0)) %>%
+  layout(
+    xaxis = list(title = "Time (Week Number)", titlefont = list(size = 20), tickfont = list(size = 18)),
+    yaxis = list(title = "Total Calls", titlefont = list(size = 20), tickfont = list(size = 18)),
+    legend = list(font = list(size = 20))
+  )
+
+# Print the plot
+p
+
+
+forecast_data
+
+# Calculate the residuals
+residuals_holt <- residuals(model_holt)
+
+# Generate autocorrelation plot of the residuals
+Acf(residuals_holt, main="Autocorrelation of Residuals")
+
+# Calculate autocorrelation
+acf_values <- Acf(residuals_holt, plot = FALSE)
+
+# Print acf values
+print(acf_values)
+
+# Perform the Ljung-Box test
+ljung_box_test_result <- Box.test(residuals_holt, type = "Ljung-Box")
+
+# Print the test results
+print(ljung_box_test_result)
+
+
+# Load the required libraries
+library(forecast)
+library(dplyr)
+library(ggplot2)
+
+# Define the forecast horizon
+forecast_horizon <- 8
+
+# Custom function to calculate MAPE
+mape <- function(actual, forecast) {
+  return(mean(abs((actual - forecast) / actual), na.rm = TRUE))
+}
+
+# Custom function to calculate RMSE
+rmse <- function(actual, forecast) {
+  return(sqrt(mean((forecast - actual)^2, na.rm = TRUE)))
+}
+
+# Simple linear regression model function for tsCV
+lm_model_function <- function(train_data, h) {
+  model <- lm(train_data ~ time(train_data))
+  newdata2 <- data.frame(time = seq(max(time(train_data)) + 1, max(time(train_data)) + h))
+  
+  # Make predictions and calculate prediction intervals
+  forecasted_values <- predict(model, newdata2, interval = "prediction")
+  
+  # Create a forecast object manually
+  forecasted_object <- list(
+    mean = forecasted_values[,1],  # point forecasts
+    lower = forecasted_values[,2],  # lower bounds of prediction intervals
+    upper = forecasted_values[,3],  # upper bounds of prediction intervals
+    level = c(80, 95),  # confidence levels for prediction intervals
+    x = train_data,
+    method = "Simple Linear Regression",
+    model = model
+  )
+  
+  class(forecasted_object) <- "forecast"
+  return(forecasted_object)
+}
+
+
+
+# Perform time series cross-validation for the simple linear regression model and calculate MAPE and RMSE
+cv_errors_lm <- tsCV(data_agg_year_week2$Total_Calls, lm_model_function, h = forecast_horizon)
+
+# Get the actual values corresponding to the forecast errors
+actual_values <- window(data_agg_year_week2$Total_Calls, start = (length(data_agg_year_week2$Total_Calls) - length(cv_errors_lm) + 1), end = length(data_agg_year_week2$Total_Calls))
+
+# Calculate MAPE and RMSE for the cross-validation data
+mape_lm <- mape(actual_values, cv_errors_lm)
+rmse_lm <- rmse(actual_values, cv_errors_lm)
+
+# Fit simple linear regression model to the entire data and calculate MAPE and RMSE for the fitted values
+model_lm <- lm(data_agg_year_week2$Total_Calls ~ time(data_agg_year_week2$Total_Calls))
+fitted_lm <- fitted(model_lm)
+mape_lm_fitted <- mape(data_agg_year_week2$Total_Calls, fitted_lm)
+rmse_lm_fitted <- rmse(data_agg_year_week2$Total_Calls, fitted_lm)
+
+# Display MAPE and RMSE result for the simple linear regression model
+result_lm <- data.frame(Model = "Simple Linear Regression", MAPE_CV = mape_lm, RMSE_CV = rmse_lm, MAPE_Fitted = mape_lm_fitted, RMSE_Fitted = rmse_lm_fitted)
+print(result_lm)
+
+
+# Load the required libraries
+library(forecast)
+library(dplyr)
+library(ggplot2)
+
+# Define the forecast horizon
+forecast_horizon <- 8
+
+# Add a time variable to the data frame
+data_agg_year_week2$Time <- 1:nrow(data_agg_year_week2)
+
+# Fit the simple linear regression model on the training data
+lm_model <- lm(Total_Calls ~ Time, data = data_agg_year_week2)
+
+# Create a data frame with actual data and linear model fitted values
+actual_fitted_data <- data.frame(
+  Time = data_agg_year_week2$Time,
+  Total_Calls = data_agg_year_week2$Total_Calls,
+  Fitted = as.numeric(fitted(lm_model))
+)
+
+# Create forecast data frame with linear model forecasts
+future_times <- seq(from = max(data_agg_year_week2$Time) + 1, 
+                    to = max(data_agg_year_week2$Time) + forecast_horizon)
+newdata <- data.frame(Time = future_times)
+
+forecast_data <- data.frame(
+  Time = future_times,
+  Total_Calls = rep(NA, length(future_times)),
+  Fitted = as.numeric(predict(lm_model, newdata = newdata))
+)
+
+# Combine actual, fitted, and forecast data
+plot_data <- rbind(actual_fitted_data, forecast_data)
+
+# Plot the actual data, fitted values, and forecasts using ggplot2
+ggplot(data = plot_data, aes(x = Time)) +
+  geom_line(aes(y = Total_Calls, color = "Actual Data"), na.rm = TRUE) +
+  geom_line(aes(y = Fitted, color = "Fitted & Forecast", linetype = "Fitted & Forecast")) +
+  geom_point(data = forecast_data, aes(y = Fitted, color = "Forecast", shape = "Forecast"), size = 2) +
+  ggtitle("Simple Linear Regression Model: Actual Data, Fitted Values, and Forecasts") +
+  xlab("Time (Week Number)") +
+  ylab("Total Calls") +
+  scale_color_manual(values = c("Actual Data" = "blue", "Fitted & Forecast" = "red", "Forecast" = "green"),
+                     name = "Legend") +
+  scale_linetype_manual(values = c("Fitted & Forecast" = "dashed"),
+                        name = "Legend") +
+  scale_shape_manual(values = c("Forecast" = 20),
+                     name = "Legend") +
+  theme(plot.margin = margin(5, 20, 5, 20),
+        aspect.ratio = 0.2) # You can adjust the aspect ratio value to your preference
+
+
+# Load the required libraries
+library(forecast)
+library(dplyr)
+library(plotly)
+
+# Define the forecast horizon
+forecast_horizon <- 8
+
+# Add a time variable to the data frame
+data_agg_year_week2$Time <- 1:nrow(data_agg_year_week2)
+
+# Fit the simple linear regression model on the training data
+lm_model <- lm(Total_Calls ~ Time, data = data_agg_year_week2)
+
+# Create a data frame with actual data and linear model fitted values
+actual_fitted_data <- data.frame(
+  Time = data_agg_year_week2$Time,
+  Total_Calls = data_agg_year_week2$Total_Calls,
+  Fitted = as.numeric(fitted(lm_model)),
+  Lower_CI = NA,
+  Upper_CI = NA
+)
+
+# Create forecast data frame with linear model forecasts
+future_times <- seq(from = max(data_agg_year_week2$Time) + 1, 
+                    to = max(data_agg_year_week2$Time) + forecast_horizon)
+newdata <- data.frame(Time = future_times)
+
+# Get forecast results with confidence intervals
+forecast_results <- predict(lm_model, newdata = newdata, interval = "prediction")
+
+forecast_data <- data.frame(
+  Time = future_times,
+  Total_Calls = rep(NA, length(future_times)),
+  Fitted = forecast_results[,1],
+  Lower_CI = forecast_results[,2],
+  Upper_CI = forecast_results[,3]
+)
+
+# Combine actual, fitted, and forecast data
+plot_data <- rbind(actual_fitted_data, forecast_data)
+
+# Create a plotly plot
+p <- plot_ly() %>%
+  add_trace(data = plot_data, x = ~Time, y = ~Total_Calls, type = 'scatter', mode = 'lines', name = 'Actual Data', line = list(color = 'blue')) %>%
+  add_trace(data = plot_data, x = ~Time, y = ~Fitted, type = 'scatter', mode = 'lines', name = 'Fitted Data', line = list(color = 'red', dash = 'dash')) %>%
+  add_trace(data = forecast_data, x = ~Time, y = ~Fitted, type = 'scatter', mode = 'markers', name = 'Forecast', marker = list(color = 'yellow')) %>%
+  add_trace(data = forecast_data, x = ~Time, y = ~Lower_CI, type = 'scatter', mode = 'lines', name = 'Lower CI', line = list(width = 0)) %>%
+  add_trace(data = forecast_data, x = ~Time, y = ~Upper_CI, type = 'scatter', mode = 'lines', name = 'Upper CI', fill = 'tonexty', fillcolor = 'rgba(0, 0, 0, 0.2)', line = list(width = 0)) %>%
+  layout(
+         xaxis = list(title = list(text = "Time (Week Number)", font = list(size = 22)), tickfont = list(size = 18)),
+         yaxis = list(title = list(text = "Total Calls", font = list(size = 22)), tickfont = list(size = 18)),
+         legend = list(font = list(size = 20))
+  )
+
+
+# Print the plot
+p
+
+
+forecast_data
+
+# Calculate the residuals
+residuals_lm <- residuals(model_lm)
+
+# Generate autocorrelation plot of the residuals
+Acf(residuals_lm, main="Autocorrelation of Residuals")
+
+# Calculate autocorrelation
+acf_values <- Acf(residuals_lm, plot = FALSE)
+
+# Print acf values
+print(acf_values)
+
+# Perform the Ljung-Box test
+ljung_box_test_result <- Box.test(residuals_lm, type = "Ljung-Box")
+
+# Print the test results
+print(ljung_box_test_result)
+
+
+# Load the required libraries
+library(forecast)
+library(dplyr)
+library(ggplot2)
+
+# Define the forecast horizon
+forecast_horizon <- 8
+
+# Custom function to calculate MAPE
+mape <- function(actual, forecast) {
+  return(mean(abs((actual - forecast) / actual), na.rm = TRUE))
+}
+
+# Custom function to calculate RMSE
+rmse <- function(actual, forecast) {
+  return(sqrt(mean((forecast - actual)^2, na.rm = TRUE)))
+}
+
+# ARIMA model function for tsCV
+arima_model_function <- function(train_data, h) {
+  model <- auto.arima(train_data)
+  forecast(model, h = h)
+}
+
+# Perform time series cross-validation for the ARIMA model and calculate MAPE and RMSE
+cv_errors_arima <- tsCV(data_agg_year_week2$Total_Calls, arima_model_function, h = forecast_horizon)
+
+# Get the actual values corresponding to the forecast errors
+actual_values <- window(data_agg_year_week2$Total_Calls, start = (length(data_agg_year_week2$Total_Calls) - length(cv_errors_arima) + 1), end = length(data_agg_year_week2$Total_Calls))
+
+# Calculate MAPE and RMSE for the cross-validation data
+mape_arima <- mape(actual_values, cv_errors_arima)
+rmse_arima <- rmse(actual_values, cv_errors_arima)
+
+# Fit ARIMA model to the entire data and calculate MAPE and RMSE for the fitted values
+model_arima <- auto.arima(data_agg_year_week2$Total_Calls)
+fitted_arima <- fitted(model_arima)
+mape_arima_fitted <- mape(data_agg_year_week2$Total_Calls, fitted_arima)
+rmse_arima_fitted <- rmse(data_agg_year_week2$Total_Calls, fitted_arima)
+
+# Display MAPE and RMSE result for the ARIMA model
+result_arima <- data.frame(Model = "ARIMA", MAPE_CV = mape_arima, RMSE_CV = rmse_arima, MAPE_Fitted = mape_arima_fitted, RMSE_Fitted = rmse_arima_fitted)
+print(result_arima)
+
+
+# Load the required libraries
+library(forecast)
+library(dplyr)
+library(ggplot2)
+
+# Define the forecast horizon
+forecast_horizon <- 8
+
+# Fit the ARIMA model on the training data
+arima_model <- auto.arima(data_agg_year_week2$Total_Calls)
+
+# Create a data frame with actual data and ARIMA fitted values
+actual_fitted_data <- data.frame(
+  Time = 1:length(data_agg_year_week2$Total_Calls),
+  Total_Calls = data_agg_year_week2$Total_Calls,
+  Fitted = as.numeric(fitted(arima_model))
+)
+
+# Create forecast data frame with ARIMA forecasts
+forecast_data <- data.frame(
+  Time = (length(data_agg_year_week2$Total_Calls) + 1):(length(data_agg_year_week2$Total_Calls) + forecast_horizon),
+  Total_Calls = NA,
+  Fitted = as.numeric(forecast(arima_model, h = forecast_horizon)$mean)
+)
+
+# Combine actual, fitted, and forecast data
+plot_data <- rbind(actual_fitted_data, forecast_data)
+
+# Plot the actual data, fitted values, and forecasts using ggplot2
+ggplot(data = plot_data, aes(x = Time)) +
+  geom_line(aes(y = Total_Calls, color = "Actual Data"), na.rm = TRUE) +
+  geom_line(aes(y = Fitted, color = "Fitted & Forecast", linetype = "Fitted & Forecast")) +
+  geom_point(data = forecast_data, aes(y = Fitted, color = "Forecast", shape = "Forecast"), size = 2) +
+  ggtitle("ARIMA Model: Actual Data, Fitted Values, and Forecasts") +
+  xlab("Time (Week Number)") +
+  ylab("Total Calls") +
+  scale_color_manual(values = c("Actual Data" = "blue", "Fitted & Forecast" = "red", "Forecast" = "green"),
+                     name = "Legend") +
+  scale_linetype_manual(values = c("Fitted & Forecast" = "dashed"),
+                        name = "Legend") +
+  scale_shape_manual(values = c("Forecast" = 20),
+                     name = "Legend") +
+  theme(plot.margin = margin(5, 20, 5, 20),
+        aspect.ratio = 0.2) # You can adjust the aspect ratio value to your preference
+
+
+# Load the required libraries
+library(forecast)
+library(dplyr)
+library(plotly)
+
+# Define the forecast horizon
+forecast_horizon <- 8
+
+# Fit the ARIMA model on the training data
+arima_model <- auto.arima(data_agg_year_week2$Total_Calls)
+
+# Create a data frame with actual data and ARIMA model fitted values
+actual_fitted_data <- data.frame(
+  Time = 1:length(data_agg_year_week2$Total_Calls),
+  Total_Calls = data_agg_year_week2$Total_Calls,
+  Fitted = as.numeric(fitted(arima_model)),
+  Lower_CI = NA,
+  Upper_CI = NA
+)
+
+# Create forecast data frame with ARIMA model forecasts
+forecast_results <- forecast(arima_model, h = forecast_horizon)
+
+forecast_data <- data.frame(
+  Time = (length(data_agg_year_week2$Total_Calls) + 1):(length(data_agg_year_week2$Total_Calls) + forecast_horizon),
+  Total_Calls = rep(NA, length(forecast_results$mean)),
+  Fitted = forecast_results$mean,
+  Lower_CI = forecast_results$lower[,2],
+  Upper_CI = forecast_results$upper[,2]
+)
+
+# Combine actual, fitted, and forecast data
+plot_data <- rbind(actual_fitted_data, forecast_data)
+
+# Create a plotly plot
+p <- plot_ly() %>%
+  add_trace(data = plot_data, x = ~Time, y = ~Total_Calls, type = 'scatter', mode = 'lines', name = 'Actual Data', line = list(color = 'blue')) %>%
+  add_trace(data = plot_data, x = ~Time, y = ~Fitted, type = 'scatter', mode = 'lines', name = 'Fitted Data', line = list(color = 'red', dash = 'dash')) %>%
+  add_trace(data = forecast_data, x = ~Time, y = ~Fitted, type = 'scatter', mode = 'markers', name = 'Forecast', marker = list(color = 'yellow')) %>%
+  add_trace(data = forecast_data, x = ~Time, y = ~Lower_CI, type = 'scatter', mode = 'lines', name = 'Lower CI', line = list(width = 0)) %>%
+  add_trace(data = forecast_data, x = ~Time, y = ~Upper_CI, type = 'scatter', mode = 'lines', name = 'Upper CI', fill = 'tonexty', fillcolor = 'rgba(0, 0, 0, 0.2)', line = list(width = 0)) %>%
+  layout(
+         xaxis = list(title = list(text = "Time (Week Number)", font = list(size = 22)), tickfont = list(size = 18)),
+         yaxis = list(title = list(text = "Total Calls", font = list(size = 22)), tickfont = list(size = 18)),
+         legend = list(font = list(size = 20))
+  )
+
+# Print the plot
+p
+
+
+forecast_data
+
+# Calculate the residuals
+residuals_arima <- residuals(model_arima)
+
+# Generate autocorrelation plot of the residuals
+Acf(residuals_arima, main="Autocorrelation of Residuals")
+
+# Calculate autocorrelation
+acf_values <- Acf(residuals_arima, plot = FALSE)
+
+# Print acf values
+print(acf_values)
+
+# Perform the Ljung-Box test
+ljung_box_test_result <- Box.test(residuals_arima, type = "Ljung-Box")
+
+# Print the test results
+print(ljung_box_test_result)
+
+
+install.packages("BoxCox")
+
+# Load the required libraries
+library(forecast)
+library(dplyr)
+library(ggplot2)
+
+# Define the forecast horizon
+forecast_horizon <- 8
+
+# Custom function to calculate MAPE
+mape <- function(actual, forecast) {
+  return(mean(abs((actual - forecast) / actual), na.rm = TRUE))
+}
+
+# Custom function to calculate RMSE
+rmse <- function(actual, forecast) {
+  return(sqrt(mean((forecast - actual)^2, na.rm = TRUE)))
+}
+
+# TBATS model function for tsCV
+tbats_model_function <- function(train_data, h) {
+  model <- tbats(train_data)
+  forecast(model, h = h)
+}
+
+# Perform time series cross-validation for the TBATS model and calculate MAPE and RMSE
+cv_errors_tbats <- tsCV(data_agg_year_week2$Total_Calls, tbats_model_function, h = forecast_horizon)
+
+# Get the actual values corresponding to the forecast errors
+actual_values <- window(data_agg_year_week2$Total_Calls, start = (length(data_agg_year_week2$Total_Calls) - length(cv_errors_tbats) + 1), end = length(data_agg_year_week2$Total_Calls))
+
+# Calculate MAPE and RMSE for the cross-validation data
+mape_tbats <- mape(actual_values, cv_errors_tbats)
+rmse_tbats <- rmse(actual_values, cv_errors_tbats)
+
+# Fit TBATS model to the entire data and calculate MAPE and RMSE for the fitted values
+model_tbats <- tbats(data_agg_year_week2$Total_Calls)
+fitted_tbats <- fitted(model_tbats)
+mape_tbats_fitted <- mape(data_agg_year_week2$Total_Calls, fitted_tbats)
+rmse_tbats_fitted <- rmse(data_agg_year_week2$Total_Calls, fitted_tbats)
+
+# Display MAPE and RMSE result for the TBATS model
+result_tbats <- data.frame(Model = "TBATS", MAPE_CV = mape_tbats, RMSE_CV = rmse_tbats, MAPE_Fitted = mape_tbats_fitted, RMSE_Fitted = rmse_tbats_fitted)
+print(result_tbats)
+
+
+summary(model_tbats)
+
+# Load the required libraries
+library(forecast)
+library(dplyr)
+library(ggplot2)
+
+# Convert data to time series object without specifying frequency
+data_ts <- ts(data_agg_year_week2$Total_Calls)
+
+# Define the forecast horizon
+forecast_horizon <- 8
+
+# Fit the TBATS model on the training data
+tbats_model <- tbats(data_ts)
+
+# Create a data frame with actual data and TBATS fitted values
+actual_fitted_data <- data.frame(
+  Time = 1:length(data_ts),
+  Total_Calls = as.numeric(data_ts),
+  Fitted = as.numeric(fitted(tbats_model))  # convert fitted values to numeric
+)
+
+# Create forecast data frame with TBATS forecasts
+forecast_tbats <- forecast(tbats_model, h = forecast_horizon)
+forecast_data <- data.frame(
+  Time = (length(data_ts) + 1):(length(data_ts) + forecast_horizon),
+  Total_Calls = NA,
+  Fitted = as.numeric(forecast_tbats$mean)  # convert forecast values to numeric
+)
+
+# Combine actual, fitted, and forecast data
+plot_data <- rbind(actual_fitted_data, forecast_data)
+
+# Plot the actual data, fitted values, and forecasts using ggplot2
+ggplot(data = plot_data, aes(x = Time)) +
+  geom_line(aes(y = Total_Calls, color = "Actual Data"), na.rm = TRUE) +
+  geom_line(aes(y = Fitted, color = "Fitted & Forecast", linetype = "Fitted & Forecast")) +
+  geom_point(data = forecast_data, aes(y = Fitted, color = "Forecast", shape = "Forecast"), size = 2) +
+  ggtitle("TBATS Model: Actual Data, Fitted Values, and Forecasts") +
+  xlab("Time (Week Number)") +
+  ylab("Total Calls") +
+  scale_color_manual(values = c("Actual Data" = "blue", "Fitted & Forecast" = "red", "Forecast" = "green"),
+                     name = "Legend") +
+  scale_linetype_manual(values = c("Fitted & Forecast" = "dashed"),
+                        name = "Legend") +
+  scale_shape_manual(values = c("Forecast" = 20),
+                     name = "Legend") +
+  theme(plot.margin = margin(5, 20, 5, 20),
+        aspect.ratio = 0.2) # You can adjust the aspect ratio value to your preference
+
+
+# Load the required libraries
+library(forecast)
+library(dplyr)
+library(plotly)
+
+# Convert data to time series object without specifying frequency
+data_ts <- ts(data_agg_year_week2$Total_Calls)
+
+# Define the forecast horizon
+forecast_horizon <- 8
+
+# Fit the TBATS model on the training data
+tbats_model <- tbats(data_ts)
+
+# Create a data frame with actual data and TBATS fitted values
+actual_fitted_data <- data.frame(
+  Time = 1:length(data_ts),
+  Total_Calls = as.numeric(data_ts),
+  Fitted = as.numeric(fitted(tbats_model)),  # convert fitted values to numeric
+  Lower_CI = NA,
+  Upper_CI = NA
+)
+
+# Create forecast data frame with TBATS forecasts
+forecast_tbats <- forecast(tbats_model, h = forecast_horizon)
+forecast_data <- data.frame(
+  Time = (length(data_ts) + 1):(length(data_ts) + forecast_horizon),
+  Total_Calls = rep(NA, length(forecast_tbats$mean)),
+  Fitted = as.numeric(forecast_tbats$mean),  # convert forecast values to numeric
+  Lower_CI = forecast_tbats$lower[,2],
+  Upper_CI = forecast_tbats$upper[,2]
+)
+
+# Combine actual, fitted, and forecast data
+plot_data <- rbind(actual_fitted_data, forecast_data)
+
+# Create a plotly plot
+p <- plot_ly() %>%
+  add_trace(data = plot_data, x = ~Time, y = ~Total_Calls, type = 'scatter', mode = 'lines', name = 'Actual Data', line = list(color = 'blue')) %>%
+  add_trace(data = plot_data, x = ~Time, y = ~Fitted, type = 'scatter', mode = 'lines', name = 'Fitted Data', line = list(color = 'red', dash = 'dash')) %>%
+  add_trace(data = forecast_data, x = ~Time, y = ~Fitted, type = 'scatter', mode = 'markers', name = 'Forecast', marker = list(color = 'yellow')) %>%
+  add_trace(data = forecast_data, x = ~Time, y = ~Lower_CI, type = 'scatter', mode = 'lines', name = 'Lower CI', line = list(width = 0)) %>%
+  add_trace(data = forecast_data, x = ~Time, y = ~Upper_CI, type = 'scatter', mode = 'lines', name = 'Upper CI', fill = 'tonexty', fillcolor = 'rgba(0, 0, 0, 0.2)', line = list(width = 0)) %>%
+  layout(
+         xaxis = list(title = list(text = "Time (Week Number)", font = list(size = 22)), tickfont = list(size = 18)),
+         yaxis = list(title = list(text = "Total Calls", font = list(size = 22)), tickfont = list(size = 18)),
+         legend = list(font = list(size = 20))
+  )
+
+# Print the plot
+p
+
+
+forecast_data
+
+# Calculate the residuals
+residuals_tbats <- residuals(model_tbats)
+
+# Generate autocorrelation plot of the residuals
+Acf(residuals_tbats, main="Autocorrelation of Residuals")
+
+# Calculate autocorrelation
+acf_values <- Acf(residuals_tbats, plot = FALSE)
+
+# Print acf values
+print(acf_values)
+
+# Perform the Ljung-Box test
+ljung_box_test_result <- Box.test(residuals_tbats, type = "Ljung-Box")
+
+# Print the test results
+print(ljung_box_test_result)
+
+
+# # Format the date column to show week number and year
+# data$YearWeek <- format(data$Date_Incoming_call, "%Y-%U")
+
+# # Get the unique week numbers in order
+# year_week_order <- unique(data$YearWeek)
+# year_week_order_factor <- factor(year_week_order, levels = year_week_order, ordered = TRUE)
+
+# # Aggregate the data by week
+# data_agg_year_week2 <- data %>%
+#   group_by(YearWeek) %>%
+#   summarise(Total_Calls = n()) %>%
+#   mutate(YearWeek = factor(YearWeek, levels = year_week_order, ordered = TRUE)) %>%
+#   arrange(YearWeek)
+
+# # Plot the weekly call volume by year
+# plot_year_week_plotly <- plot_ly(data_agg_year_week2, x = ~YearWeek, y = ~Total_Calls, type = 'scatter', mode = 'lines') %>%
+#   layout(title = "Weekly Call Volume by Year", xaxis = list(title = "Year-Week"), yaxis = list(title = "Total Calls"))
+
+# plot_year_week_plotly
+
+
+
+
+# # Load the required libraries
+# library(forecast)
+# library(dplyr)
+# library(ggplot2)
+
+# # Define the forecast horizon
+# forecast_horizon <- 8
+
+# # Custom function to calculate MAPE
+# mape <- function(actual, forecast) {
+#   return(mean(abs((actual - forecast) / actual), na.rm = TRUE))
+# }
+
+# # Custom function to calculate RMSE
+# rmse <- function(actual, forecast) {
+#   return(sqrt(mean((actual - forecast)^2, na.rm = TRUE)))
+# }
+
+# # Split the data into training and test sets
+# split_index <- length(data_agg_year_week2$Total_Calls) - forecast_horizon + 1
+# train_data <- window(data_agg_year_week2$Total_Calls, end = split_index - 1)
+# test_data <- window(data_agg_year_week2$Total_Calls, start = split_index)
+
+# # Fit the naive model on the training data
+# naive_model <- naive(train_data, h = forecast_horizon)
+
+# # Calculate the MAPE for the test data
+# mape_naive_test <- mape(test_data, naive_model$mean)
+
+# # Display MAPE result for the Naive model on the test set
+# mape_naive_test_result <- data.frame(Model = "Naive", MAPE_Test = mape_naive_test)
+# print(mape_naive_test_result)
+
+# # Calculate the RMSE for the test data
+# rmse_naive_test <- rmse(test_data, naive_model$mean)
+
+# # Display RMSE result for the Naive model on the test set
+# rmse_naive_test_result <- data.frame(Model = "Naive", RMSE_Test = rmse_naive_test)
+# print(rmse_naive_test_result)
+
+
+# cat('------------------------------------------------\n')
+
+# # Calculate the MAPE for the training data
+# mape_naive_train <- mape(train_data, fitted(naive_model))
+
+# # Display MAPE result for the Naive model on the training set
+# mape_naive_train_result <- data.frame(Model = "Naive", MAPE_Train = mape_naive_train)
+# print(mape_naive_train_result)
+
+
+
+# # Calculate the RMSE for the training data
+# rmse_naive_train <- rmse(train_data, fitted(naive_model))
+
+# # Display RMSE result for the Naive model on the training set
+# rmse_naive_train_result <- data.frame(Model = "Naive", RMSE_Train = rmse_naive_train)
+# print(rmse_naive_train_result)
+
+
+# # Load the required libraries
+# library(forecast)
+# library(dplyr)
+# library(ggplot2)
+
+# # Define the forecast horizon
+# forecast_horizon <- 2
+
+# # Custom function to calculate MAPE
+# mape <- function(actual, forecast) {
+#   return(mean(abs((actual - forecast) / actual), na.rm = TRUE))
+# }
+
+# # Naive model function for tsCV
+# naive_model_function_monthly <- function(train_data, h) {
+#   model <- naive(train_data)
+#   forecast(model, h = h)
+# }
+
+# # Perform time series cross-validation for the Naive model and calculate MAPE
+# cv_errors_naive_monthly <- tsCV(data_agg_year_month$Total_Calls, naive_model_function_monthly, h = forecast_horizon)
+
+# # Get the actual values corresponding to the forecast errors
+# actual_values_monthly <- window(data_agg_year_month$Total_Calls, start = (length(data_agg_year_month$Total_Calls) - length(cv_errors_naive_monthly) + 1), end = length(data_agg_year_month$Total_Calls))
+
+# mape_naive_monthly <- mape(actual_values_monthly, cv_errors_naive_monthly)
+
+# # Display MAPE result for the Naive model
+# mape_naive_result_monthly <- data.frame(Model = "Naive", MAPE = mape_naive_monthly)
+# print(mape_naive_result_monthly)
+
+# # Fit the naive model on the entire dataset
+# naive_model_monthly <- naive(data_agg_year_month$Total_Calls, h = forecast_horizon)
+
+# # Plot the actual data, fitted values, and forecasts using autoplot
+# autoplot(naive_model_monthly, main = "Naive Model: Actual Data, Fitted Values, and Forecasts (Monthly)", xlab = "Time", ylab = "Total Calls") +
+#   autolayer(fitted(naive_model_monthly), series = "Fitted", PI = FALSE) +
+#   ggtitle("Naive Model: Actual Data, Fitted Values, and Forecasts (Monthly)") +
+#   xlab("Time") +
+#   ylab("Total Calls") +
+#   theme(plot.margin = margin(5, 20, 5, 20),
+#         aspect.ratio = 0.5) # You can adjust the aspect ratio value to your preference
+
